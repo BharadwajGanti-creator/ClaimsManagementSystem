@@ -1,0 +1,64 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{002E0D8E-4B73-4A53-88E9-066C71E7CD8B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Claims.API", "src\Claims.API\Claims.API.csproj", "{E14EE72A-FECF-4466-97D5-316EB8A99783}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Claims.Application", "src\Claims.Application\Claims.Application.csproj", "{2233EA09-D62A-4826-A0C2-A197018B91FE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Claims.Domain", "src\Claims.Domain\Claims.Domain.csproj", "{C978EB62-85F4-4984-B38B-574009476E20}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Claims.Infrastructure", "src\Claims.Infrastructure\Claims.Infrastructure.csproj", "{88A182AD-4ED8-44B5-BBF5-07AF0DC424AC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Claims.Shared", "src\Claims.Shared\Claims.Shared.csproj", "{F5B9000F-DEB7-479A-8665-61B2A9322ECF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0EC95280-4344-4DD3-A814-FFB20F9B5B5F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Claims.Tests", "tests\Claims.Tests\Claims.Tests.csproj", "{4C5EBC55-764E-4654-9B69-08109B81003D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E14EE72A-FECF-4466-97D5-316EB8A99783}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E14EE72A-FECF-4466-97D5-316EB8A99783}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E14EE72A-FECF-4466-97D5-316EB8A99783}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E14EE72A-FECF-4466-97D5-316EB8A99783}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2233EA09-D62A-4826-A0C2-A197018B91FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2233EA09-D62A-4826-A0C2-A197018B91FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2233EA09-D62A-4826-A0C2-A197018B91FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2233EA09-D62A-4826-A0C2-A197018B91FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C978EB62-85F4-4984-B38B-574009476E20}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C978EB62-85F4-4984-B38B-574009476E20}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C978EB62-85F4-4984-B38B-574009476E20}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C978EB62-85F4-4984-B38B-574009476E20}.Release|Any CPU.Build.0 = Release|Any CPU
+		{88A182AD-4ED8-44B5-BBF5-07AF0DC424AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{88A182AD-4ED8-44B5-BBF5-07AF0DC424AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{88A182AD-4ED8-44B5-BBF5-07AF0DC424AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{88A182AD-4ED8-44B5-BBF5-07AF0DC424AC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5B9000F-DEB7-479A-8665-61B2A9322ECF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5B9000F-DEB7-479A-8665-61B2A9322ECF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5B9000F-DEB7-479A-8665-61B2A9322ECF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5B9000F-DEB7-479A-8665-61B2A9322ECF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4C5EBC55-764E-4654-9B69-08109B81003D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C5EBC55-764E-4654-9B69-08109B81003D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C5EBC55-764E-4654-9B69-08109B81003D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C5EBC55-764E-4654-9B69-08109B81003D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E14EE72A-FECF-4466-97D5-316EB8A99783} = {002E0D8E-4B73-4A53-88E9-066C71E7CD8B}
+		{2233EA09-D62A-4826-A0C2-A197018B91FE} = {002E0D8E-4B73-4A53-88E9-066C71E7CD8B}
+		{C978EB62-85F4-4984-B38B-574009476E20} = {002E0D8E-4B73-4A53-88E9-066C71E7CD8B}
+		{88A182AD-4ED8-44B5-BBF5-07AF0DC424AC} = {002E0D8E-4B73-4A53-88E9-066C71E7CD8B}
+		{F5B9000F-DEB7-479A-8665-61B2A9322ECF} = {002E0D8E-4B73-4A53-88E9-066C71E7CD8B}
+		{4C5EBC55-764E-4654-9B69-08109B81003D} = {0EC95280-4344-4DD3-A814-FFB20F9B5B5F}
+	EndGlobalSection
+EndGlobal
