@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "moDrGteikJ8=",
+  "success": true,
+  "projectFilePath": "D:\\Upskilling_For_Full_Time\\Test_Project\\Test_Project.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Bharadwaj Ganti\\.nuget\\packages\\microsoft.dotnet.ilcompiler\\8.0.18\\microsoft.dotnet.ilcompiler.8.0.18.nupkg.sha512",
+    "C:\\Users\\Bharadwaj Ganti\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.18\\microsoft.net.illink.tasks.8.0.18.nupkg.sha512",
+    "C:\\Users\\Bharadwaj Ganti\\.nuget\\packages\\runtime.win-x64.microsoft.dotnet.ilcompiler\\8.0.18\\runtime.win-x64.microsoft.dotnet.ilcompiler.8.0.18.nupkg.sha512"
+  ],
+  "logs": []
+}
