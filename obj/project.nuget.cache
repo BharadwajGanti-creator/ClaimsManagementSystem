@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "W4uoKwq6kxw=",
+  "success": true,
+  "projectFilePath": "D:\\Upskilling_For_Full_Time\\HelloWorldPlusApi\\HelloWorldPlusApi.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Bharadwaj Ganti\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.7\\microsoft.aspnetcore.openapi.9.0.7.nupkg.sha512",
+    "C:\\Users\\Bharadwaj Ganti\\.nuget\\packages\\microsoft.openapi\\1.6.17\\microsoft.openapi.1.6.17.nupkg.sha512"
+  ],
+  "logs": []
+}
