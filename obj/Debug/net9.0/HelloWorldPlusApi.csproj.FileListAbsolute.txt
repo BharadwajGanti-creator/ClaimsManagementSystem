@@ -16,6 +16,7 @@ D:\Upskilling_For_Full_Time\HelloWorldPlusApi\obj\Debug\net9.0\HelloWorldPlusApi
 D:\Upskilling_For_Full_Time\HelloWorldPlusApi\obj\Debug\net9.0\HelloWorldPlusApi.csproj.CoreCompileInputs.cache
 D:\Upskilling_For_Full_Time\HelloWorldPlusApi\obj\Debug\net9.0\HelloWorldPlusApi.MvcApplicationPartsAssemblyInfo.cs
 D:\Upskilling_For_Full_Time\HelloWorldPlusApi\obj\Debug\net9.0\HelloWorldPlusApi.MvcApplicationPartsAssemblyInfo.cache
+D:\Upskilling_For_Full_Time\HelloWorldPlusApi\obj\Debug\net9.0\HelloWorldPlusApi.sourcelink.json
 D:\Upskilling_For_Full_Time\HelloWorldPlusApi\obj\Debug\net9.0\rjimswa.dswa.cache.json
 D:\Upskilling_For_Full_Time\HelloWorldPlusApi\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
 D:\Upskilling_For_Full_Time\HelloWorldPlusApi\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json

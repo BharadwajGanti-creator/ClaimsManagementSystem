@@ -1,4 +1,4 @@
-﻿namespace HelloWorldPlusApi;
+﻿namespace HelloWorldPlusApi.Controllers;
 using Microsoft.AspNetCore.Mvc;
 [ApiController]
 [Route("api/[controller]")]

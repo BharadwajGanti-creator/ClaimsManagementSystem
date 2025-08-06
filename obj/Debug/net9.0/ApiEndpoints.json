@@ -1,6 +1,85 @@
 [
   {
-    "ContainingType": "HelloWorldPlusApi.HelloWorldController",
+    "ContainingType": "HelloWorldPlusApi.Controllers.BooksController",
+    "Method": "GetBooks",
+    "RelativePath": "api/Books",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "HelloWorldPlusApi.Controllers.BooksController",
+    "Method": "CreateBook",
+    "RelativePath": "api/Books",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "HelloWorldPlusApi.Controllers.BookCreateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "HelloWorldPlusApi.Controllers.BooksController",
+    "Method": "GetById",
+    "RelativePath": "api/Books/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "HelloWorldPlusApi.Controllers.BooksController",
+    "Method": "UpdateBook",
+    "RelativePath": "api/Books/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "HelloWorldPlusApi.Controllers.BookCreateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "HelloWorldPlusApi.Controllers.BooksController",
+    "Method": "DeleteBook",
+    "RelativePath": "api/Books/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "HelloWorldPlusApi.Controllers.HelloWorldController",
     "Method": "GetHello",
     "RelativePath": "api/HelloWorld",
     "HttpMethod": "GET",
@@ -10,7 +89,7 @@
     "ReturnTypes": []
   },
   {
-    "ContainingType": "HelloWorldPlusApi.HelloWorldController",
+    "ContainingType": "HelloWorldPlusApi.Controllers.HelloWorldController",
     "Method": "GetHelloName",
     "RelativePath": "api/HelloWorld/{name}",
     "HttpMethod": "GET",
@@ -26,7 +105,7 @@
     "ReturnTypes": []
   },
   {
-    "ContainingType": "HelloWorldPlusApi.HelloWorldController",
+    "ContainingType": "HelloWorldPlusApi.Controllers.HelloWorldController",
     "Method": "GetStatus",
     "RelativePath": "api/status",
     "HttpMethod": "GET",

@@ -1,0 +1,152 @@
+{
+  "info": {
+    "name": "Book Management API Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Happy Path Tests",
+      "item": [
+        {
+          "name": "GET All Books",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/bookmanagement"
+          }
+        },
+        {
+          "name": "POST Create Book",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/bookmanagement",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"The Great Gatsby\",\n    \"author\": \"F. Scott Fitzgerald\",\n    \"isbn\": \"978-0743273565\",\n    \"publishedYear\": 1925\n}"
+            }
+          }
+        },
+        {
+          "name": "GET Book by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/bookmanagement/1"
+          }
+        },
+        {
+          "name": "PUT Update Book",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/bookmanagement/1",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"The Great Gatsby (Updated)\",\n    \"author\": \"F. Scott Fitzgerald\",\n    \"isbn\": \"978-0743273565\",\n    \"publishedYear\": 1925\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE Book",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/bookmanagement/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Error Scenarios",
+      "item": [
+        {
+          "name": "POST Invalid JSON",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/bookmanagement",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Invalid JSON\",\n    \"author\": "
+            }
+          }
+        },
+        {
+          "name": "POST Missing Required Fields",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/bookmanagement",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"\",\n    \"author\": null,\n    \"publishedYear\": 2025\n}"
+            }
+          }
+        },
+        {
+          "name": "GET Invalid ID Format",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/bookmanagement/abc"
+          }
+        },
+        {
+          "name": "PUT Non-existent ID",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/bookmanagement/999",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Test Book\",\n    \"author\": \"Test Author\",\n    \"isbn\": \"123-4567890\",\n    \"publishedYear\": 2025\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Edge Cases",
+      "item": [
+        {
+          "name": "POST Book with Future Year",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/bookmanagement",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Future Book\",\n    \"author\": \"Test Author\",\n    \"isbn\": \"123-4567890\",\n    \"publishedYear\": 3001\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Duplicate ISBN",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/bookmanagement",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Different Book\",\n    \"author\": \"Different Author\",\n    \"isbn\": \"978-0743273565\",\n    \"publishedYear\": 2020\n}"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://localhost:5001"
+    }
+  ]
+}
