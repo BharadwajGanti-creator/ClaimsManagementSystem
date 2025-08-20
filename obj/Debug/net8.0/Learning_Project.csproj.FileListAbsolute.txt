@@ -33,3 +33,4 @@ D:\Upskilling_For_Full_Time\Learning_Project\obj\Debug\net8.0\refint\Learning_Pr
 D:\Upskilling_For_Full_Time\Learning_Project\obj\Debug\net8.0\Learning_Project.pdb
 D:\Upskilling_For_Full_Time\Learning_Project\obj\Debug\net8.0\Learning_Project.genruntimeconfig.cache
 D:\Upskilling_For_Full_Time\Learning_Project\obj\Debug\net8.0\ref\Learning_Project.dll
+D:\Upskilling_For_Full_Time\Learning_Project\obj\Debug\net8.0\Learning_Project.sourcelink.json
