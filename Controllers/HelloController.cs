@@ -27,15 +27,37 @@
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        [HttpGet("/hello/{name}")]
-        public IActionResult GetHelloName(string name)
+        //[HttpGet("/hello/{name}")]
+        //public IActionResult GetHelloName(string name)
+        //{
+        //    //Validate the name using the NameValidationService
+        //    var validationResult = _nameValidationService.ValidateName(name);
+        //    var traceId = HttpContext.TraceIdentifier;
+        //    if (!validationResult.IsValid)
+        //    {
+        //        var erroResponse = _errorService.ErrorResponse(validationResult, HttpContext.Request.Path, 400,traceId);
+        //        return BadRequest(erroResponse);
+        //    }
+        //    return Ok(new
+        //    {
+        //        Message = $"Hello {name}",
+        //        Timestamp = DateTime.UtcNow.ToString("o")
+        //    });
+        //}
+        /// <summary>
+        /// This method returns the required response to the hello endpoint by accepting name as the parameter.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        [HttpGet("/hello-async/{name}")]
+        public async Task<IActionResult> GetHelloNameAsyncV2([FromRoute] string name, CancellationToken cancellationToken = default)
         {
             //Validate the name using the NameValidationService
-            var validationResult = _nameValidationService.ValidateName(name);
+            var validationResult = await _nameValidationService.ValidateNameAsync(name,cancellationToken);
             var traceId = HttpContext.TraceIdentifier;
             if (!validationResult.IsValid)
             {
-                var erroResponse = _errorService.ErrorResponse(validationResult, HttpContext.Request.Path, 400,traceId);
+                var erroResponse = _errorService.ErrorResponse(validationResult, HttpContext.Request.Path, 400, traceId);
                 return BadRequest(erroResponse);
             }
             return Ok(new

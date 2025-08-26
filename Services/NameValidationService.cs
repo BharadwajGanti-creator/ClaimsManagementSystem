@@ -55,13 +55,13 @@ namespace Learning_Project.Services
                 if (!IsValidCharacter(AllowedCharacters(), name))
                 {
                     _logger.LogWarning("Name validation failed: Name contains invalid characters.");
-                    return ValidationResult.Failure(name + ValidationMessages.CHARACTER_VALIDATION, ValidationMessages.CHARACTER_VALIDATION_ERROR_CODE);
+                    return ValidationResult.Failure(ValidationMessages.CHARACTER_VALIDATION, ValidationMessages.CHARACTER_VALIDATION_ERROR_CODE);
                 }
                 //Checking for consecutive spaces and starting/ending with non-letter characters
                 if (HasConsecutiveSpaces(name) || StartOrEndsWithNonLetter(name))
                 {
                     _logger.LogWarning("Name validation failed: Name contains consecutive spaces or starts/ends with non-letter characters.");
-                    return ValidationResult.Failure(name + ValidationMessages.CONSECUTIVE_SPACES_VALIDATION, ValidationMessages.CONSECUTIVE_SPACES_VALIDATION_ERROR_CODE);
+                    return ValidationResult.Failure(ValidationMessages.CONSECUTIVE_SPACES_VALIDATION, ValidationMessages.CONSECUTIVE_SPACES_VALIDATION_ERROR_CODE);
                 }
                 // If all checks pass, return success
                 _logger.LogInformation("Name validation succeeded.");
@@ -71,6 +71,50 @@ namespace Learning_Project.Services
             {
                 _logger.LogError(ex, "An error occurred during name validation.");
                 return ValidationResult.Failure("An unexpected error occurred during name validation.", "UnexpectedError");
+            }
+
+        }
+        /// <summary>
+        /// // This method validates the name based on the following criteria:
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public Task<ValidationResult> ValidateNameAsync(string name, CancellationToken  cancellationToken = default)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    _logger.LogWarning("Name validation failed: Name is empty or whitespace.");
+                    return Task.FromResult(ValidationResult.Failure(ValidationMessages.EMPTY_NAME, ValidationMessages.EMPTY_NAME_ERROR_CODE));             
+                }
+                name = name.Trim();
+                //Checking the length of the name
+                if (name.Length < 1 || name.Length > 32)
+                {
+                    _logger.LogWarning("Name validation failed: Name length is invalid.");
+                    return Task.FromResult(ValidationResult.Failure(ValidationMessages.LENGTH_VALIDATION, ValidationMessages.LENGTH_VALIDATION_ERROR_CODE));
+                }
+                //Checking for invalid characters
+                if (!IsValidCharacter(AllowedCharacters(), name))
+                {
+                    _logger.LogWarning("Name validation failed: Name contains invalid characters.");
+                    return Task.FromResult(ValidationResult.Failure(ValidationMessages.CHARACTER_VALIDATION, ValidationMessages.CHARACTER_VALIDATION_ERROR_CODE));
+                }
+                //Checking for consecutive spaces and starting/ending with non-letter characters
+                if (HasConsecutiveSpaces(name) || StartOrEndsWithNonLetter(name))
+                {
+                    _logger.LogWarning("Name validation failed: Name contains consecutive spaces or starts/ends with non-letter characters.");
+                    return Task.FromResult(ValidationResult.Failure(ValidationMessages.CONSECUTIVE_SPACES_VALIDATION, ValidationMessages.CONSECUTIVE_SPACES_VALIDATION_ERROR_CODE));
+                }
+                // If all checks pass, return success
+                _logger.LogInformation("Name validation succeeded.");
+                return Task.FromResult(ValidationResult.Success());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during name validation.");
+                return Task.FromResult(ValidationResult.Failure("An unexpected error occurred during name validation.", "UnexpectedError"));
             }
 
         }

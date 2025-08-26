@@ -17,7 +17,7 @@
         }
       }
     },
-    "/hello/{name}": {
+    "/hello-async/{name}": {
       "get": {
         "tags": [
           "Hello"

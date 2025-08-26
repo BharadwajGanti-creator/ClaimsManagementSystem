@@ -6,5 +6,7 @@ namespace Learning_Project.Interfaces
     public interface INameValidationService
     {
         public ValidationResult ValidateName(string name);
+
+        public Task<ValidationResult> ValidateNameAsync(string name, CancellationToken cancellationToken);
     }
 }

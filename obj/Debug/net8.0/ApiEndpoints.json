@@ -11,8 +11,8 @@
   },
   {
     "ContainingType": "Learning_Project.Controllers.HelloController",
-    "Method": "GetHelloName",
-    "RelativePath": "hello/{name}",
+    "Method": "GetHelloNameAsyncV2",
+    "RelativePath": "hello-async/{name}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,

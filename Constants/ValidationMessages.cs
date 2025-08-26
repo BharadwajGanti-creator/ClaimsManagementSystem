@@ -8,7 +8,7 @@
         public const string LENGTH_VALIDATION_ERROR_CODE = "NameLengthInvalid";
         public const string CHARACTER_VALIDATION = "Name contains invalid characters";
         public const string CHARACTER_VALIDATION_ERROR_CODE = "InvalidCharacters";
-        public const string CONSECUTIVE_SPACES_VALIDATION = "Name contains consecutive spaces";
-        public const string CONSECUTIVE_SPACES_VALIDATION_ERROR_CODE = "ConsecutiveSpaces";
+        public const string CONSECUTIVE_SPACES_VALIDATION = "Name contains consecutive spaces/ starts or ends with special characters";
+        public const string CONSECUTIVE_SPACES_VALIDATION_ERROR_CODE = "ConsecutiveSpacesORStartsorEndsWithSpecialCharacters";
     }
 }
