@@ -1,0 +1,39 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: claims-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Your_strong_password123"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - claims-mssql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: claims-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__ClaimsDb: "Server=db,1433;Database=ClaimsDb;User Id=sa;Password=Your_strong_password123;TrustServerCertificate=True;Encrypt=False"
+      Jwt__SigningKey: "compose_dev_signing_key_change_me_at_least_32_chars"
+    ports:
+      - "8080:8080"
+    volumes:
+      - claims-documents:/app/claim-documents
+
+volumes:
+  claims-mssql-data:
+  claims-documents:
