@@ -135,3 +135,11 @@ All settings can be overridden with environment variables using the
 
 `.github/workflows/ci.yml` restores, builds, tests (with coverage), and builds
 the Docker image on every push/PR to `main`.
+
+## Deploy to Azure (live)
+
+`.github/workflows/deploy.yml` provisions Azure Container Registry, Azure SQL,
+and an Azure Web App for Containers (via `infra/main.bicep`) and ships the app on
+every push to `main`. The live URL (root redirects to Swagger) is printed in the
+job summary. Full setup — service principal, required secrets/variables — is in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).

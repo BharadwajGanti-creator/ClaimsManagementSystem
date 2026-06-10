@@ -32,11 +32,9 @@ var app = builder.Build();
 // --- Pipeline ---
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger is exposed in all environments so the deployed API is self-documenting.
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseSerilogRequestLogging();
 app.UseCors();
@@ -44,6 +42,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
+app.MapGet("/", () => Results.Redirect("/swagger")).AllowAnonymous();
 
 // --- Database migration + seeding on startup ---
 await DbInitializer.InitializeAsync(app.Services);
