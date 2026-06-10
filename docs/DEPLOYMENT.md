@@ -1,17 +1,23 @@
-# Deploying to Azure
+# Deploying to Azure — free tier ($0 target)
 
-The `Deploy to Azure` GitHub Actions workflow (`.github/workflows/deploy.yml`)
-provisions and updates everything needed for a public, live API:
+The `Deploy to Azure (free)` workflow (`.github/workflows/deploy.yml`) deploys a
+public, live API designed to cost **nothing**:
 
-- **Azure Container Registry** — builds the image from the `Dockerfile` (server-side, via `az acr build`).
-- **Azure SQL** — server + `ClaimsDb` (Basic tier); schema is created automatically on app startup.
-- **Azure Web App for Containers** — Linux B1 plan, pulls the image and runs it on port 8080.
+- **Image** is built and pushed to **GitHub Container Registry (GHCR)** — free.
+- **Compute** is **Azure Container Apps** (Consumption) with **scale-to-zero** —
+  $0 while idle, and light usage stays within the always-free monthly grant
+  (which is available to any subscription, independent of free-trial credits).
+- **Database** is **embedded SQLite inside the container** — no Azure SQL, no DB
+  cost at all.
 
-It runs on every push to `main` (and can be triggered manually via
-**Actions → Deploy to Azure → Run workflow**).
+> ⚠️ Trade-off: because the container scales to zero and SQLite lives inside it,
+> **data resets whenever the app cold-starts after being idle.** This is intended
+> for a free demo, not durable storage. (To make data durable later, switch the
+> `Database__Provider` env var back to `SqlServer` and point `ConnectionStrings__ClaimsDb`
+> at a real database.)
 
-After a successful run, the public URL is printed in the job summary:
-`https://<app>.azurewebsites.net` (root redirects to `/swagger`).
+After a successful run, the live URL is printed in the job summary
+(root redirects to `/swagger`).
 
 ---
 
@@ -20,7 +26,7 @@ After a successful run, the public URL is printed in the job summary:
 ### 1. Create a deployment service principal
 
 With the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli),
-logged in to the target subscription:
+signed in to your subscription:
 
 ```bash
 SUB_ID=$(az account show --query id -o tsv)
@@ -32,37 +38,38 @@ az ad sp create-for-rbac \
   --sdk-auth
 ```
 
-Copy the **entire JSON** output — it's the value for the `AZURE_CREDENTIALS` secret.
+Copy the **entire JSON** output — that's the `AZURE_CREDENTIALS` secret.
 
 ### 2. Add GitHub repository **secrets**
 
-`Settings → Secrets and variables → Actions → Secrets → New repository secret`:
+`Settings → Secrets and variables → Actions → Secrets`:
 
 | Secret | Value |
 |---|---|
 | `AZURE_CREDENTIALS` | The full JSON from step 1 |
-| `SQL_ADMIN_PASSWORD` | A strong SQL password (e.g. 16+ chars, mixed case, digit, symbol) |
 | `JWT_SIGNING_KEY` | A random string **≥ 32 characters** |
 | `SEED_ADMIN_PASSWORD` | Password for the seeded `admin@claims.local` login |
 
-### 3. Add GitHub repository **variables**
+(No SQL password and no registry secret are needed.)
 
-`Settings → Secrets and variables → Actions → Variables → New repository variable`:
+### 3. (Optional) repository **variables**
 
-| Variable | Required | Default | Notes |
-|---|---|---|---|
-| `AZURE_ACR_NAME` | **yes** | — | Globally-unique, 5–50 alphanumeric (e.g. `claimsacr<yourinitials>`) |
-| `AZURE_RG` | no | `claims-rg` | Resource group name |
-| `AZURE_LOCATION` | no | `eastus` | Azure region |
-| `SQL_ADMIN_LOGIN` | no | `claimsadmin` | SQL admin username |
+| Variable | Default | Notes |
+|---|---|---|
+| `AZURE_RG` | `claims-rg` | Resource group name |
+| `AZURE_LOCATION` | `eastus` | Azure region |
 
-### 4. Deploy
+### 4. Run the deploy once, then make the image public
 
-- Merge this PR into `main` (the workflow runs automatically), **or**
-- Run it manually: **Actions → Deploy to Azure → Run workflow**.
+1. Merge to `main` (or **Actions → Deploy to Azure (free) → Run workflow**).
+   The first run pushes the image to GHCR and provisions Container Apps.
+2. The GHCR package is **private by default**, so the very first deploy may show
+   the app failing to pull the image. Make it public **once**:
+   `GitHub → your profile → Packages → claimsmanagementsystem → Package settings →
+   Change visibility → Public`.
+3. Re-run the workflow (or restart the container app). It will now pull and run.
 
-The first run takes a few minutes (provisioning SQL + plan). Subsequent runs
-only rebuild the image and roll the Web App.
+After that, every push to `main` redeploys automatically with no manual steps.
 
 ---
 
@@ -70,20 +77,20 @@ only rebuild the image and roll the Web App.
 
 ```bash
 # Log in as the seeded admin (use your SEED_ADMIN_PASSWORD)
-curl -s https://<app>.azurewebsites.net/api/auth/login \
+curl -s https://<app>.<region>.azurecontainerapps.io/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@claims.local","password":"<SEED_ADMIN_PASSWORD>"}'
 ```
 
-Open `https://<app>.azurewebsites.net/swagger` to explore and exercise the API.
+Open `https://<app>.<region>.azurecontainerapps.io/swagger` to explore the API.
 
-## Approximate cost
+> First request after idle takes a few seconds (cold start from zero replicas).
 
-Basic tiers: App Service B1 (~$13/mo), Azure SQL Basic (~$5/mo), ACR Basic
-(~$5/mo). Delete the resource group to stop all charges:
-`az group delete --name claims-rg`.
+## Cost & teardown
 
-## Teardown
+With scale-to-zero + SQLite + GHCR, steady-state cost is **$0**. The only
+residual risk is exceeding the monthly Container Apps free grant under sustained
+traffic. To remove everything:
 
 ```bash
 az group delete --name claims-rg --yes --no-wait

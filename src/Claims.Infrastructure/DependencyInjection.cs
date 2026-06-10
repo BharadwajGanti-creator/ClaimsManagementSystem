@@ -26,10 +26,17 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // --- Persistence ---
+        // Provider is selectable so the same image runs against SQL Server
+        // (local/docker) or a zero-cost embedded SQLite database (free cloud tier).
+        var provider = configuration["Database:Provider"] ?? "SqlServer";
+        var connectionString = configuration.GetConnectionString("ClaimsDb");
         services.AddDbContext<ClaimsDbContext>(options =>
-            options.UseSqlServer(
-                configuration.GetConnectionString("ClaimsDb"),
-                sql => sql.EnableRetryOnFailure()));
+        {
+            if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+                options.UseSqlite(connectionString);
+            else
+                options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure());
+        });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ClaimsDbContext>());
 

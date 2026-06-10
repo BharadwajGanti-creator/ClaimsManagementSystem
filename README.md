@@ -136,10 +136,23 @@ All settings can be overridden with environment variables using the
 `.github/workflows/ci.yml` restores, builds, tests (with coverage), and builds
 the Docker image on every push/PR to `main`.
 
-## Deploy to Azure (live)
+## Deploy to Azure (free, $0 target)
 
-`.github/workflows/deploy.yml` provisions Azure Container Registry, Azure SQL,
-and an Azure Web App for Containers (via `infra/main.bicep`) and ships the app on
-every push to `main`. The live URL (root redirects to Swagger) is printed in the
-job summary. Full setup — service principal, required secrets/variables — is in
-[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+`.github/workflows/deploy.yml` deploys a live, public API designed to cost
+nothing: the image is pushed to **GitHub Container Registry**, and runs on
+**Azure Container Apps** (scale-to-zero) with an **embedded SQLite** database —
+no Azure SQL, no container registry charges (`infra/main.bicep`). The live URL
+(root redirects to Swagger) is printed in the run summary.
+
+> Because compute scales to zero and SQLite lives in the container, data resets
+> on cold start — fine for a free demo. Switch `Database__Provider` to `SqlServer`
+> with a real connection string for durable storage.
+
+Full setup — service principal, secrets, and the one-time "make the GHCR package
+public" step — is in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+### Database provider
+
+The app runs on SQL Server or SQLite via the `Database:Provider` setting
+(`SqlServer` by default; `Sqlite` for the free cloud deploy). Locally,
+`docker compose up` uses SQL Server.

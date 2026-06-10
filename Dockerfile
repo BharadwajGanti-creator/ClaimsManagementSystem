@@ -22,8 +22,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Document storage lives here; mount a volume in production.
-RUN mkdir -p /app/claim-documents
+# Writable dirs for claim documents and (when using the free SQLite provider)
+# the embedded database file.
+RUN mkdir -p /app/claim-documents /app/data
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 ENTRYPOINT ["dotnet", "Claims.API.dll"]

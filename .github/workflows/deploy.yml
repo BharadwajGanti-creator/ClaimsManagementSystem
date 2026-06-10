@@ -1,7 +1,8 @@
-name: Deploy to Azure
+name: Deploy to Azure (free)
 
-# Builds the container in Azure Container Registry and deploys it to an
-# Azure Web App for Containers (with Azure SQL), provisioned via Bicep.
+# Builds the image, pushes it to GitHub Container Registry (free), and deploys
+# to Azure Container Apps (scale-to-zero) running an embedded SQLite database.
+# Designed to cost $0. See docs/DEPLOYMENT.md.
 on:
   push:
     branches: [main]
@@ -13,14 +14,12 @@ concurrency:
 
 permissions:
   contents: read
+  packages: write
 
 env:
   RESOURCE_GROUP: ${{ vars.AZURE_RG || 'claims-rg' }}
   LOCATION: ${{ vars.AZURE_LOCATION || 'eastus' }}
-  ACR_NAME: ${{ vars.AZURE_ACR_NAME }}          # must be globally unique, 5-50 alphanumeric
-  SQL_ADMIN_LOGIN: ${{ vars.SQL_ADMIN_LOGIN || 'claimsadmin' }}
   NAME_PREFIX: claims
-  IMAGE: claims-api:${{ github.sha }}
 
 jobs:
   deploy:
@@ -29,57 +28,63 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate required configuration
-        run: |
-          test -n "$ACR_NAME" || { echo "::error::Set repository variable AZURE_ACR_NAME (globally-unique ACR name)."; exit 1; }
+      - name: Compute lowercase image reference
+        id: img
+        run: echo "ref=ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.img.outputs.ref }}
+            ghcr.io/${{ github.repository_owner }}/claimsmanagementsystem:latest
 
       - name: Azure login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Register providers (first run only)
+        run: |
+          az provider register --namespace Microsoft.App --wait
+          az provider register --namespace Microsoft.OperationalInsights --wait
+
       - name: Ensure resource group
         run: az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --output none
 
-      - name: Ensure container registry
-        run: |
-          az acr create --name "$ACR_NAME" --resource-group "$RESOURCE_GROUP" \
-            --sku Basic --admin-enabled true --location "$LOCATION" --output none
-
-      - name: Build & push image in ACR
-        run: az acr build --registry "$ACR_NAME" --image "$IMAGE" --image claims-api:latest .
-
-      - name: Provision infrastructure & deploy (Bicep)
+      - name: Deploy infrastructure (Bicep)
         run: |
           az deployment group create \
             --resource-group "$RESOURCE_GROUP" \
             --template-file infra/main.bicep \
             --parameters \
               namePrefix="$NAME_PREFIX" \
-              acrName="$ACR_NAME" \
-              containerImage="$IMAGE" \
-              sqlAdminLogin="$SQL_ADMIN_LOGIN" \
-              sqlAdminPassword="${{ secrets.SQL_ADMIN_PASSWORD }}" \
+              containerImage="${{ steps.img.outputs.ref }}" \
               jwtSigningKey="${{ secrets.JWT_SIGNING_KEY }}" \
               seedAdminPassword="${{ secrets.SEED_ADMIN_PASSWORD }}" \
             --output none
 
-      - name: Read deployment outputs
+      - name: Read live URL
         id: outputs
         run: |
           URL=$(az deployment group show -g "$RESOURCE_GROUP" -n main \
-            --query properties.outputs.webAppUrl.value -o tsv)
-          APP=$(az deployment group show -g "$RESOURCE_GROUP" -n main \
-            --query properties.outputs.webAppName.value -o tsv)
+            --query properties.outputs.appUrl.value -o tsv)
           echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "app=$APP" >> "$GITHUB_OUTPUT"
-
-      - name: Restart web app to pull new image
-        run: az webapp restart --name "${{ steps.outputs.app }}" --resource-group "$RESOURCE_GROUP"
 
       - name: Summary
         run: |
-          echo "### ✅ Deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ✅ Deployed (free tier)" >> "$GITHUB_STEP_SUMMARY"
           echo "- App URL: ${{ steps.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Swagger: ${{ steps.outputs.url }}/swagger" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Health: ${{ steps.outputs.url }}/health" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Health:  ${{ steps.outputs.url }}/health" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "> Note: SQLite data resets when the app scales to zero and cold-starts." >> "$GITHUB_STEP_SUMMARY"
