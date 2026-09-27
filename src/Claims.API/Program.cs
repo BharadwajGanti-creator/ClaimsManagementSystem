@@ -5,8 +5,11 @@ using Claims.Application.Abstractions.Identity;
 using Claims.Infrastructure;
 using Claims.Infrastructure.Persistence;
 using Serilog;
+using Claims.API.Health;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
-var builder = WebApplication.CreateBuilder(args);
+var migrateOnly = args.Contains("--migrate-database", StringComparer.Ordinal);
+var builder = WebApplication.CreateBuilder(args.Where(arg => arg != "--migrate-database").ToArray());
 
 // --- Structured logging ---
 builder.Host.UseSerilog((context, config) =>
@@ -22,6 +25,7 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddSwaggerWithJwt();
+builder.Services.AddHealthChecks().AddCheck<DatabaseReadinessCheck>("database", tags: ["ready"]);
 
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
@@ -42,10 +46,15 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("ready")
+}).AllowAnonymous();
 app.MapGet("/", () => Results.Redirect("/swagger")).AllowAnonymous();
 
-// --- Database migration + seeding on startup ---
-await DbInitializer.InitializeAsync(app.Services);
+// Serving processes only verify the schema. Migration mode applies it and exits.
+await DbInitializer.InitializeAsync(app.Services, applyMigrations: migrateOnly);
+if (migrateOnly) return;
 
 app.Run();
 

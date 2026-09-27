@@ -6,6 +6,7 @@ using Claims.Application.Features.Mapping;
 using Claims.Domain.Entities;
 using Claims.Domain.Enums;
 using Claims.Shared.Pagination;
+using Claims.Shared.Constants;
 using Claims.Shared.Results;
 
 namespace Claims.Application.Features.Policies;
@@ -72,6 +73,9 @@ public sealed class PolicyService : IPolicyService
     public async Task<Result<PolicyDto>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var policy = await _policies.GetWithDetailsAsync(id, cancellationToken);
+        if (policy is not null && _currentUser.IsInRole(Roles.Claimant)
+            && (_currentUser.CustomerId is null || policy.CustomerId != _currentUser.CustomerId))
+            return Error.Forbidden("You can only access your own policies.");
         return policy is null
             ? Error.NotFound($"Policy '{id}' was not found.")
             : policy.ToDto();
@@ -79,6 +83,12 @@ public sealed class PolicyService : IPolicyService
 
     public async Task<Result<PagedResult<PolicyDto>>> GetPagedAsync(PaginationParams pagination, Guid? customerId, CancellationToken cancellationToken = default)
     {
+        if (_currentUser.IsInRole(Roles.Claimant))
+        {
+            if (_currentUser.CustomerId is null)
+                return Error.Forbidden("A claimant must be linked to a customer.");
+            customerId = _currentUser.CustomerId;
+        }
         var page = await _policies.GetPagedAsync(pagination, customerId, cancellationToken);
         return new PagedResult<PolicyDto>(
             page.Items.Select(p => p.ToDto()).ToList(),

@@ -22,6 +22,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: claims-api
+    # Local development only: explicit bootstrap before the serving process.
+    entrypoint: ["/bin/sh", "-c", "dotnet Claims.API.dll --migrate-database && exec dotnet Claims.API.dll"]
     depends_on:
       db:
         condition: service_healthy

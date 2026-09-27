@@ -8,18 +8,20 @@ param location string = resourceGroup().location
 param containerImage string
 
 @secure()
-@description('JWT signing key (>= 32 chars).')
+@minLength(32)
+@description('JWT signing key (at least 32 UTF-8 bytes).')
 param jwtSigningKey string
 
 @secure()
-@description('Seeded admin account password for first login.')
+@minLength(12)
+@description('Seeded admin password for first login (at least 12 characters).')
 param seedAdminPassword string
 
 var envName = '${namePrefix}-env'
 var appName = '${namePrefix}-api'
 
 // Container Apps managed environment (Consumption). No Log Analytics is attached,
-// which keeps it within the always-free monthly grant and avoids log-ingestion cost.
+// which avoids Log Analytics ingestion; total cost depends on usage.
 resource managedEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: envName
   location: location
@@ -49,6 +51,9 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
         {
           name: 'claims-api'
           image: containerImage
+          // Demo-only bootstrap: each ephemeral replica starts with an empty DB.
+          command: ['/bin/sh', '-c']
+          args: ['dotnet Claims.API.dll --migrate-database && exec dotnet Claims.API.dll']
           resources: {
             cpu: json('0.5')
             memory: '1Gi'
@@ -62,6 +67,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'Jwt__AccessTokenMinutes', value: '60' }
             { name: 'Jwt__SigningKey', secretRef: 'jwt-signing-key' }
             { name: 'Seed__AdminEmail', value: 'admin@claims.local' }
+            { name: 'Seed__Enabled', value: 'true' }
             { name: 'Seed__AdminPassword', secretRef: 'seed-admin-password' }
             { name: 'Storage__LocalRootPath', value: '/app/claim-documents' }
           ]

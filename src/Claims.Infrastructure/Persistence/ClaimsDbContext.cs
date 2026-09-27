@@ -7,11 +7,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Claims.Infrastructure.Persistence;
 
-public sealed class ClaimsDbContext : DbContext, IUnitOfWork
+public class ClaimsDbContext : DbContext, IUnitOfWork
 {
     private readonly IDateTimeProvider _clock;
 
     public ClaimsDbContext(DbContextOptions<ClaimsDbContext> options, IDateTimeProvider clock)
+        : this((DbContextOptions)options, clock) { }
+
+    protected ClaimsDbContext(DbContextOptions options, IDateTimeProvider clock)
         : base(options)
     {
         _clock = clock;
@@ -29,6 +32,27 @@ public sealed class ClaimsDbContext : DbContext, IUnitOfWork
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        // The domain assigns every entity ID. New children of tracked aggregates
+        // must be inserted even though their GUID is already populated.
+        foreach (var entity in modelBuilder.Model.GetEntityTypes())
+            if (typeof(BaseEntity).IsAssignableFrom(entity.ClrType))
+                modelBuilder.Entity(entity.ClrType).Property(nameof(BaseEntity.Id)).ValueGeneratedNever();
+        if (Database.IsSqlite())
+        {
+            // SQLite cannot order DateTimeOffset values. Store UTC ticks so pagination
+            // preserves chronological ordering; both provider models have separate migrations.
+            foreach (var entity in modelBuilder.Model.GetEntityTypes())
+                foreach (var property in entity.GetProperties())
+                {
+                    if (property.ClrType == typeof(DateTimeOffset))
+                        property.SetValueConverter(new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTimeOffset, long>(
+                            value => value.UtcTicks, value => new DateTimeOffset(value, TimeSpan.Zero)));
+                    else if (property.ClrType == typeof(DateTimeOffset?))
+                        property.SetValueConverter(new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTimeOffset?, long?>(
+                            value => value.HasValue ? value.Value.UtcTicks : null,
+                            value => value.HasValue ? new DateTimeOffset(value.Value, TimeSpan.Zero) : null));
+                }
+        }
         base.OnModelCreating(modelBuilder);
     }
 
