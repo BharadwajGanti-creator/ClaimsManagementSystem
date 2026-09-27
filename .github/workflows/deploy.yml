@@ -1,0 +1,90 @@
+name: Deploy to Azure (free)
+
+# Builds the image, pushes it to GitHub Container Registry (free), and deploys
+# to Azure Container Apps (scale-to-zero) running an embedded SQLite database.
+# Designed to cost $0. See docs/DEPLOYMENT.md.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: azure-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  RESOURCE_GROUP: ${{ vars.AZURE_RG || 'claims-rg' }}
+  LOCATION: ${{ vars.AZURE_LOCATION || 'eastus' }}
+  NAME_PREFIX: claims
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute lowercase image reference
+        id: img
+        run: echo "ref=ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.img.outputs.ref }}
+            ghcr.io/${{ github.repository_owner }}/claimsmanagementsystem:latest
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Register providers (first run only)
+        run: |
+          az provider register --namespace Microsoft.App --wait
+          az provider register --namespace Microsoft.OperationalInsights --wait
+
+      - name: Ensure resource group
+        run: az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --output none
+
+      - name: Deploy infrastructure (Bicep)
+        run: |
+          az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --template-file infra/main.bicep \
+            --parameters \
+              namePrefix="$NAME_PREFIX" \
+              containerImage="${{ steps.img.outputs.ref }}" \
+              jwtSigningKey="${{ secrets.JWT_SIGNING_KEY }}" \
+              seedAdminPassword="${{ secrets.SEED_ADMIN_PASSWORD }}" \
+            --output none
+
+      - name: Read live URL
+        id: outputs
+        run: |
+          URL=$(az deployment group show -g "$RESOURCE_GROUP" -n main \
+            --query properties.outputs.appUrl.value -o tsv)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          echo "### ✅ Deployed (free tier)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- App URL: ${{ steps.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Swagger: ${{ steps.outputs.url }}/swagger" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Health:  ${{ steps.outputs.url }}/health" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "> Note: SQLite data resets when the app scales to zero and cold-starts." >> "$GITHUB_STEP_SUMMARY"

@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Application layer: use-cases, DTOs, service abstractions and implementations.
+    Intentionally free of external NuGet dependencies so the business core stays
+    portable and fast to compile/test. Mapping and validation are done manually.
+  -->
   <ItemGroup>
     <ProjectReference Include="..\Claims.Domain\Claims.Domain.csproj" />
+    <ProjectReference Include="..\Claims.Shared\Claims.Shared.csproj" />
   </ItemGroup>
-
-  <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
 
 </Project>
