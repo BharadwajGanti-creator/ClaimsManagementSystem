@@ -1,138 +1,43 @@
 # Architecture
 
-## 1. Why the original repository was incomplete
+One .NET 10 ASP.NET Core backend uses feature-organized services and Clean/Onion layers. These projects share a deployment and relational database; they are not microservices. No broker, cache, payment provider or frontend is implemented here.
 
-The starting point was a **scaffold only**: six projects wired together in the
-correct Onion Architecture dependency order, but every layer contained nothing
-more than a `Class1.cs` placeholder, and the API exposed only the default
-`WeatherForecast` template. The README advertised ".NET 8, Azure SQL, EF Core,
-Docker, JWT Auth, CI/CD" but none of that existed in code, and the projects
-actually targeted the now end-of-life `net7.0`.
+API composes Application and Infrastructure. Application references Domain and Shared, and defines persistence, identity, time and storage interfaces. Infrastructure implements those interfaces. Domain owns entities and the claim state machine. Domain, Shared and Application have no external NuGet dependencies.
 
-In short: the *table of contents* was there; the *chapters* were not.
+Controllers enforce roles and map Result errors to HTTP responses. Services validate inputs, ownership and policy eligibility, orchestrate repositories and invoke domain behavior. Repositories stage changes; one scoped EF DbContext implements IUnitOfWork and commits related writes together.
 
-## 2. Architectural style
+## Model
 
-This system uses **Clean / Onion Architecture**. Dependencies point inward; the
-domain knows nothing about infrastructure.
-
-```
-                 ┌─────────────────────────────┐
-                 │           Claims.API         │  controllers, auth, swagger,
-                 │      (composition root)      │  middleware, CurrentUser
-                 └──────────────┬──────────────┘
-                                │ depends on
-        ┌───────────────────────┼───────────────────────┐
-        ▼                                               ▼
-┌────────────────┐                          ┌────────────────────────┐
-│ Claims.        │  implements ports        │  Claims.Application      │
-│ Infrastructure │ ───────────────────────▶ │  (use cases, DTOs,       │
-│ EF Core, JWT,  │                          │   port interfaces)       │
-│ repositories   │                          └───────────┬────────────┘
-└───────┬────────┘                                      │ depends on
-        │ depends on                                    ▼
-        │                                   ┌────────────────────────┐
-        └─────────────────────────────────▶│  Claims.Domain          │
-                                            │  entities, enums,        │
-                                            │  state machine, rules    │
-                                            └────────────────────────┘
-                 Claims.Shared: Result<T>, pagination, role constants
-                 (referenced by Application, Infrastructure, API)
+```text
+Customer 1 -> many Policy
+Policy   1 -> many Coverage and Claim
+Claim    1 -> many ClaimDocument and ClaimStatusHistory
+Claim    1 -> zero or one Payout
+User     many -> zero or one Customer
 ```
 
-### Layer responsibilities
+SQL Server amounts use decimal(18,2); no explicit currency field exists. Document bytes live in LocalFileStorage and metadata/path in the database. History is appended by domain methods but remains mutable persisted data, not tamper-proof evidence.
 
-| Layer | Responsibility | External deps |
-|-------|----------------|---------------|
-| **Domain** | Entities, value semantics, enums, **invariants & the claim state machine**, domain exceptions. | none |
-| **Shared** | `Result`/`Result<T>`, `Error`, pagination primitives, role name constants. | none |
-| **Application** | Use-case **services**, request/response **DTOs**, and **ports** (interfaces) for persistence, identity, time, and storage. Maps entities ↔ DTOs manually. | none (NuGet) |
-| **Infrastructure** | Adapters that implement the ports: `ClaimsDbContext` + configurations + repositories, `JwtTokenService`, `PasswordHasherAdapter`, `LocalFileStorage`, `SystemDateTimeProvider`, DI wiring, DB seeding. | EF Core, JWT libs |
-| **API** | HTTP surface: controllers, JWT auth + role policies, Swagger, exception middleware, `CurrentUser` over `HttpContext`, and the composition root. | ASP.NET Core, Swashbuckle, Serilog |
+## Workflow
 
-Keeping Domain/Shared/Application free of NuGet dependencies means the entire
-business core compiles and unit-tests without a database, web host, or network.
-
-## 3. Key design decisions
-
-- **Rich domain model, not anemic.** `Claim` owns its lifecycle. Status changes
-  go through `ChangeStatus` / `Approve` / `Reject` / `MarkPaid`, which validate
-  transitions against an explicit allowed-transitions table and append an
-  immutable `ClaimStatusHistory` entry. Illegal transitions throw
-  `InvalidClaimStatusTransitionException`.
-
-- **Result pattern over exceptions for expected failures.** Services return
-  `Result<T>` carrying a categorized `Error` (Validation/NotFound/Conflict/
-  Unauthorized/Forbidden). The API maps these to HTTP status codes in one place
-  (`ResultExtensions`). Truly exceptional cases bubble up to the exception
-  middleware and become RFC 7807 ProblemDetails.
-
-- **Ports & adapters.** Application depends on interfaces (`IClaimRepository`,
-  `IJwtTokenService`, `IFileStorage`, `IDateTimeProvider`, `ICurrentUser`, …);
-  Infrastructure/API supply implementations. This is what makes the core testable
-  with simple in-memory fakes (see `tests/Claims.Tests/Fakes`).
-
-- **Repository + Unit of Work.** Repositories express intent-revealing queries;
-  `IUnitOfWork` (implemented by the `DbContext`) commits a transaction. Services
-  never call `SaveChanges` on EF directly.
-
-- **Authorization in two tiers.** Coarse role checks via `[Authorize(Roles=…)]`
-  on controllers; fine-grained ownership checks inside services (a claimant may
-  only see/act on their own policies and claims, enforced via the `customer_id`
-  JWT claim).
-
-- **Auditing.** `AuditableEntity` carries created/updated metadata, stamped by
-  the services (actor) with a `SaveChanges` backstop for timestamps.
-
-## 4. Domain model
-
-```
-Customer 1───* Policy 1───* Coverage
-                  │
-                  1
-                  │
-                  *
-                Claim 1───* ClaimDocument
-                  │  └────* ClaimStatusHistory
-                  1
-                  │
-                  0..1
-                Payout
-
-User *──0..1 Customer        (claimants are linked to a Customer; staff are not)
-```
-
-## 5. Claim workflow (state machine)
-
-| From | Allowed to |
-|------|-----------|
+| From | Allowed next states |
+| --- | --- |
 | Submitted | UnderReview, Cancelled |
 | UnderReview | InformationRequested, Approved, Rejected, Cancelled |
 | InformationRequested | UnderReview, Cancelled |
 | Approved | Paid |
-| Rejected / Paid / Cancelled | *(terminal)* |
+| Rejected, Paid, Cancelled | Terminal |
 
-## 6. Request lifecycle (example: approve a claim)
+Submission checks ownership, input, active policy, incident coverage window and available coverage, then commits the claim and initial history. Claimants see their own claims/policies and may cancel eligible claims. Staff adjudicate. Approval rechecks coverage; this read-then-write check is not safe under concurrent approvals of different claims.
 
-1. `POST /api/claims/{id}/approve` hits `ClaimsController` (requires `Admin`/`Adjuster`).
-2. `ClaimService.ApproveAsync` loads the claim with details, re-checks the policy
-   coverage limit, then calls `claim.Approve(amount, actor, notes)`.
-3. The domain validates the transition and amount, sets `ApprovedAmount`, and
-   records history.
-4. `IUnitOfWork.SaveChangesAsync` commits; a `Result<ClaimDetailDto>` is returned.
-5. `ResultExtensions` turns it into `200 OK` or the appropriate error status.
+Payout creation requires approval and is unique per claim. Processing records a reference and moves the claim to Paid in one database commit. No money transfer occurs.
 
-## 7. Security notes
+## Persistence and cross-cutting behavior
 
-- Passwords hashed with ASP.NET Core's PBKDF2 `PasswordHasher`.
-- JWTs signed with HMAC-SHA256; issuer/audience/lifetime validated.
-- The committed signing keys and seed password are **development placeholders** —
-  supply real values via environment variables / secrets in any shared environment.
+Provider-specific DbContexts share entity configuration and have separate migrations. SQLite DateTimeOffset values use UTC ticks for ordering. Domain-assigned GUIDs are configured as non-generated; tracked aggregate updates preserve new history/document inserts. Normal startup verifies schema; `--migrate-database` applies migrations, optionally seeds, and exits. README describes adoption of existing EnsureCreated databases.
 
-## 8. Production hardening (future work)
+HS256 JWT authentication validates signature, issuer, audience, lifetime, algorithm, user ID and one supported role. Claimant tokens require customer_id. Public registration forces Claimant; staff roles are Admin/Adjuster. Services enforce ownership in addition to controller roles.
 
-- Switch `EnsureCreated` → committed EF migrations (command in the README).
-- Replace `LocalFileStorage` with an Azure Blob Storage adapter.
-- Add refresh tokens / token revocation.
-- Add integration tests with `WebApplicationFactory` + Testcontainers SQL Server.
-- Add rate limiting, output caching, and OpenTelemetry traces/metrics.
+Expected errors map to 400/401/403/404/409; unexpected errors produce generic 500 ProblemDetails. Serilog logs requests. `/health` is liveness; `/health/ready` is database/schema readiness. Swagger and permissive CORS remain; production needs identity/account controls, restricted origins and throttling.
+
+File writes and database metadata commits are separate; database failure can leave orphan files. See [system design and scaling](SYSTEM-DESIGN-AND-SCALING.md) for the staged production plan and verification limits.

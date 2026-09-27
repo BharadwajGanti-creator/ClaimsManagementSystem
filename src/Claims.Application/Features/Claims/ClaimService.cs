@@ -39,6 +39,23 @@ public sealed class ClaimService : IClaimService
 
     public async Task<Result<ClaimDetailDto>> SubmitAsync(SubmitClaimRequest request, CancellationToken cancellationToken = default)
     {
+        if (!_currentUser.IsAuthenticated)
+            return Error.Unauthorized("Authentication is required.");
+        if (!IsStaff && !_currentUser.IsInRole(Roles.Claimant))
+            return Error.Forbidden("A recognized role is required.");
+        if (_currentUser.IsInRole(Roles.Claimant) && _currentUser.CustomerId is null)
+            return Error.Forbidden("A claimant must be linked to a customer.");
+        if (request.PolicyId == Guid.Empty || !Enum.IsDefined(request.Type))
+            return Error.Validation("A policy ID and a valid claim type are required.");
+        if (request.IncidentDate == DateOnly.MinValue || request.IncidentDate > _clock.Today)
+            return Error.Validation("Incident date is required and cannot be in the future.");
+        var description = request.Description?.Trim() ?? string.Empty;
+        if (description.Length is < 10 or > 2000)
+            return Error.Validation("Description must contain 10 to 2000 characters.");
+        if (request.ClaimedAmount <= 0 || request.ClaimedAmount > 9_999_999_999_999_999.99m
+            || decimal.Round(request.ClaimedAmount, 2) != request.ClaimedAmount)
+            return Error.Validation("Claimed amount must fit decimal(18,2), be positive and have at most two decimal places.");
+
         var policy = await _policies.GetWithDetailsAsync(request.PolicyId, cancellationToken);
         if (policy is null)
             return Error.NotFound($"Policy '{request.PolicyId}' was not found.");
@@ -74,7 +91,7 @@ public sealed class ClaimService : IClaimService
             Type = request.Type,
             IncidentDate = request.IncidentDate,
             SubmittedAtUtc = _clock.UtcNow,
-            Description = request.Description,
+            Description = description,
             ClaimedAmount = request.ClaimedAmount,
             CreatedAtUtc = _clock.UtcNow,
             CreatedBy = _currentUser.AuditName
@@ -108,6 +125,8 @@ public sealed class ClaimService : IClaimService
 
     public async Task<Result<PagedResult<ClaimDto>>> GetPagedAsync(PaginationParams pagination, ClaimStatus? status, Guid? policyId, CancellationToken cancellationToken = default)
     {
+        if (!IsStaff && (!_currentUser.IsInRole(Roles.Claimant) || _currentUser.CustomerId is null))
+            return Error.Forbidden("A valid customer or staff identity is required.");
         // Claimants are implicitly scoped to their own customer record.
         Guid? customerScope = _currentUser.IsInRole(Roles.Claimant) ? _currentUser.CustomerId : null;
 
@@ -127,10 +146,13 @@ public sealed class ClaimService : IClaimService
         TransitionAsync(id, (claim, actor) => claim.Reject(actor, request.Reason), cancellationToken);
 
     public Task<Result<ClaimDetailDto>> CancelAsync(Guid id, ClaimNotesRequest request, CancellationToken cancellationToken = default) =>
-        TransitionAsync(id, (claim, actor) => claim.ChangeStatus(ClaimStatus.Cancelled, actor, request.Notes), cancellationToken);
+        TransitionAsync(id, (claim, actor) => claim.ChangeStatus(ClaimStatus.Cancelled, actor, request.Notes), cancellationToken, allowOwner: true);
 
     public async Task<Result<ClaimDetailDto>> ApproveAsync(Guid id, ApproveClaimRequest request, CancellationToken cancellationToken = default)
     {
+        if (!IsStaff) return Error.Forbidden("Only staff may approve claims.");
+        if (request.ApprovedAmount <= 0 || decimal.Round(request.ApprovedAmount, 2) != request.ApprovedAmount)
+            return Error.Validation("Approved amount must be positive and have at most two decimal places.");
         var claim = await _claims.GetWithDetailsAsync(id, cancellationToken);
         if (claim is null)
             return Error.NotFound($"Claim '{id}' was not found.");
@@ -190,11 +212,19 @@ public sealed class ClaimService : IClaimService
 
     /// <summary>Shared pipeline for staff-only status transitions.</summary>
     private async Task<Result<ClaimDetailDto>> TransitionAsync(
-        Guid id, Action<Claim, string> transition, CancellationToken cancellationToken)
+        Guid id, Action<Claim, string> transition, CancellationToken cancellationToken, bool allowOwner = false)
     {
+        if (!allowOwner && !IsStaff)
+            return Error.Forbidden("Only staff may adjudicate claims.");
         var claim = await _claims.GetWithDetailsAsync(id, cancellationToken);
         if (claim is null)
             return Error.NotFound($"Claim '{id}' was not found.");
+
+        if (allowOwner)
+        {
+            var access = EnsureCanView(claim);
+            if (access.IsFailure) return access.Error!;
+        }
 
         try
         {
@@ -219,13 +249,17 @@ public sealed class ClaimService : IClaimService
 
     private Result EnsureCanView(Claim claim)
     {
-        if (!_currentUser.IsInRole(Roles.Claimant))
+        if (IsStaff)
             return Result.Success(); // Staff can view everything.
 
-        return claim.Policy?.CustomerId == _currentUser.CustomerId
+        return _currentUser.IsAuthenticated && _currentUser.IsInRole(Roles.Claimant)
+            && _currentUser.CustomerId is { } customerId && claim.Policy?.CustomerId == customerId
             ? Result.Success()
             : Result.Failure(Error.Forbidden("You can only access your own claims."));
     }
+
+    private bool IsStaff => _currentUser.IsAuthenticated
+        && (_currentUser.IsInRole(Roles.Admin) || _currentUser.IsInRole(Roles.Adjuster));
 
     private static Error ToError(DomainException ex) =>
         ex is InvalidClaimStatusTransitionException

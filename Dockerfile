@@ -1,5 +1,5 @@
 # ---- Build stage ----
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Restore as a distinct layer for better caching.
@@ -18,11 +18,11 @@ COPY . .
 RUN dotnet publish src/Claims.API/Claims.API.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 # ---- Runtime stage ----
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Writable dirs for claim documents and (when using the free SQLite provider)
+# Writable dirs for claim documents and (when using the demo SQLite provider)
 # the embedded database file.
 RUN mkdir -p /app/claim-documents /app/data
 EXPOSE 8080

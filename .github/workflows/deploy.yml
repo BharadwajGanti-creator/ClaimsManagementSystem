@@ -1,8 +1,8 @@
-name: Deploy to Azure (free)
+name: Deploy to Azure (demo)
 
 # Builds the image, pushes it to GitHub Container Registry (free), and deploys
 # to Azure Container Apps (scale-to-zero) running an embedded SQLite database.
-# Designed to cost $0. See docs/DEPLOYMENT.md.
+# Ephemeral demo storage; costs depend on usage. See docs/DEPLOYMENT.md.
 on:
   push:
     branches: [main]
@@ -22,7 +22,25 @@ env:
   NAME_PREFIX: claims
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore
+      - run: dotnet build --no-restore --configuration Release
+      - run: dotnet tool restore
+      - name: Verify migration models
+        run: |
+          dotnet ef migrations has-pending-model-changes --context SqliteClaimsDbContext --project src/Claims.Infrastructure --startup-project src/Claims.Infrastructure --configuration Release --no-build
+          dotnet ef migrations has-pending-model-changes --context SqlServerClaimsDbContext --project src/Claims.Infrastructure --startup-project src/Claims.Infrastructure --configuration Release --no-build
+      - run: dotnet test --no-build --configuration Release
   deploy:
+    needs: verify
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -82,7 +100,7 @@ jobs:
 
       - name: Summary
         run: |
-          echo "### ✅ Deployed (free tier)" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Deployed demo" >> "$GITHUB_STEP_SUMMARY"
           echo "- App URL: ${{ steps.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Swagger: ${{ steps.outputs.url }}/swagger" >> "$GITHUB_STEP_SUMMARY"
           echo "- Health:  ${{ steps.outputs.url }}/health" >> "$GITHUB_STEP_SUMMARY"

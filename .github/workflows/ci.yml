@@ -12,16 +12,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 8
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       - name: Restore
         run: dotnet restore
 
       - name: Build
         run: dotnet build --no-restore -c Release
+
+      - name: Check both migration models
+        run: |
+          dotnet tool restore
+          dotnet ef migrations has-pending-model-changes --context SqliteClaimsDbContext --project src/Claims.Infrastructure --startup-project src/Claims.Infrastructure --configuration Release --no-build
+          dotnet ef migrations has-pending-model-changes --context SqlServerClaimsDbContext --project src/Claims.Infrastructure --startup-project src/Claims.Infrastructure --configuration Release --no-build
 
       - name: Test
         run: dotnet test --no-build -c Release --verbosity normal --collect:"XPlat Code Coverage"

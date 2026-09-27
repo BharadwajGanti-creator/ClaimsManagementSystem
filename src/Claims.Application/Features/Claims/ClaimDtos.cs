@@ -52,7 +52,7 @@ public sealed record SubmitClaimRequest
     [Required] public Guid PolicyId { get; init; }
     [Required] public ClaimType Type { get; init; }
     [Required] public DateOnly IncidentDate { get; init; }
-    [Required, MinLength(10)] public string Description { get; init; } = string.Empty;
+    [Required, MinLength(10), MaxLength(2000)] public string Description { get; init; } = string.Empty;
     [Range(0.01, double.MaxValue)] public decimal ClaimedAmount { get; init; }
 }
 

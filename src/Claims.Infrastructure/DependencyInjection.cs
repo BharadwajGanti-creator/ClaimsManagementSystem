@@ -27,16 +27,23 @@ public static class DependencyInjection
     {
         // --- Persistence ---
         // Provider is selectable so the same image runs against SQL Server
-        // (local/docker) or a zero-cost embedded SQLite database (free cloud tier).
+        // (local/production) or an embedded SQLite database for development/demo.
         var provider = configuration["Database:Provider"] ?? "SqlServer";
         var connectionString = configuration.GetConnectionString("ClaimsDb");
-        services.AddDbContext<ClaimsDbContext>(options =>
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("ConnectionStrings:ClaimsDb is required.");
+        if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
         {
-            if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
-                options.UseSqlite(connectionString);
-            else
-                options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure());
-        });
+            services.AddDbContext<SqliteClaimsDbContext>(options => options.UseSqlite(connectionString));
+            services.AddScoped<ClaimsDbContext>(sp => sp.GetRequiredService<SqliteClaimsDbContext>());
+        }
+        else if (provider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddDbContext<SqlServerClaimsDbContext>(options =>
+                options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure()));
+            services.AddScoped<ClaimsDbContext>(sp => sp.GetRequiredService<SqlServerClaimsDbContext>());
+        }
+        else throw new InvalidOperationException("Database:Provider must be SqlServer or Sqlite.");
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ClaimsDbContext>());
 

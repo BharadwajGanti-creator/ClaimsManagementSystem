@@ -10,12 +10,13 @@ using Microsoft.Extensions.Logging;
 namespace Claims.Infrastructure.Persistence;
 
 /// <summary>
-/// Applies migrations (or creates the schema) and seeds a default admin account
-/// on startup. Idempotent: safe to run on every launch.
+/// Verifies the schema for serving startup. Explicit migration mode applies
+/// committed migrations and optionally bootstraps an administrator.
 /// </summary>
 public static class DbInitializer
 {
-    public static async Task InitializeAsync(IServiceProvider services, CancellationToken cancellationToken = default)
+    public static async Task InitializeAsync(IServiceProvider services, CancellationToken cancellationToken = default,
+        bool applyMigrations = false)
     {
         using var scope = services.CreateScope();
         var sp = scope.ServiceProvider;
@@ -23,19 +24,18 @@ public static class DbInitializer
         var context = sp.GetRequiredService<ClaimsDbContext>();
         var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("DbInitializer");
 
-        if (context.Database.GetMigrations().Any())
+        if (applyMigrations)
         {
             logger.LogInformation("Applying database migrations...");
             await context.Database.MigrateAsync(cancellationToken);
         }
         else
         {
-            // No migrations checked in yet — create the schema directly so the app runs.
-            logger.LogInformation("No migrations found; ensuring database is created.");
-            await context.Database.EnsureCreatedAsync(cancellationToken);
+            if ((await context.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
+                throw new InvalidOperationException("Database migrations are pending. Run the application with --migrate-database as an explicit deployment step before starting the API.");
         }
 
-        await SeedAdminAsync(sp, context, logger, cancellationToken);
+        if (applyMigrations) await SeedAdminAsync(sp, context, logger, cancellationToken);
     }
 
     private static async Task SeedAdminAsync(
@@ -45,11 +45,14 @@ public static class DbInitializer
         CancellationToken cancellationToken)
     {
         var config = sp.GetRequiredService<IConfiguration>();
+        if (!config.GetValue<bool>("Seed:Enabled")) return;
         var hasher = sp.GetRequiredService<IPasswordHasher>();
         var clock = sp.GetRequiredService<IDateTimeProvider>();
 
-        var adminEmail = (config["Seed:AdminEmail"] ?? "admin@claims.local").ToLowerInvariant();
-        var adminPassword = config["Seed:AdminPassword"] ?? "Admin#12345";
+        var adminEmail = config["Seed:AdminEmail"]?.Trim().ToLowerInvariant();
+        var adminPassword = config["Seed:AdminPassword"];
+        if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword) || adminPassword.Length < 12)
+            throw new InvalidOperationException("Seeding requires an explicit admin email and a password of at least 12 characters.");
 
         if (await context.Users.AnyAsync(u => u.Email == adminEmail, cancellationToken))
             return;

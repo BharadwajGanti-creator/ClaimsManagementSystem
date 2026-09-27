@@ -1,12 +1,12 @@
-# Deploying to Azure — free tier ($0 target)
+# Deploying the disposable Azure demo
 
-The `Deploy to Azure (free)` workflow (`.github/workflows/deploy.yml`) deploys a
-public, live API designed to cost **nothing**:
+The `Deploy to Azure (demo)` workflow (`.github/workflows/deploy.yml`) verifies
+the build, tests and migration models before deploying a public demo API.
+Costs depend on usage and subscription terms; set budget alerts:
 
 - **Image** is built and pushed to **GitHub Container Registry (GHCR)** — free.
 - **Compute** is **Azure Container Apps** (Consumption) with **scale-to-zero** —
-  $0 while idle, and light usage stays within the always-free monthly grant
-  (which is available to any subscription, independent of free-trial credits).
+  idle compute can scale down; usage may qualify for the applicable monthly grant.
 - **Database** is **embedded SQLite inside the container** — no Azure SQL, no DB
   cost at all.
 
@@ -14,7 +14,13 @@ public, live API designed to cost **nothing**:
 > **data resets whenever the app cold-starts after being idle.** This is intended
 > for a free demo, not durable storage. (To make data durable later, switch the
 > `Database__Provider` env var back to `SqlServer` and point `ConnectionStrings__ClaimsDb`
-> at a real database.)
+> at a real database and replace local document storage with private object storage.)
+
+The demo explicitly runs `--migrate-database` before serving because each
+replacement container starts with an empty database. Production should run
+migrations once in a release job with a separate identity, then start replicas.
+Normal startup checks migrations and never seeds users. Existing EnsureCreated
+databases require the adoption process in the README.
 
 After a successful run, the live URL is printed in the job summary
 (root redirects to `/swagger`).
@@ -47,8 +53,8 @@ Copy the **entire JSON** output — that's the `AZURE_CREDENTIALS` secret.
 | Secret | Value |
 |---|---|
 | `AZURE_CREDENTIALS` | The full JSON from step 1 |
-| `JWT_SIGNING_KEY` | A random string **≥ 32 characters** |
-| `SEED_ADMIN_PASSWORD` | Password for the seeded `admin@claims.local` login |
+| `JWT_SIGNING_KEY` | A random secret of at least 32 UTF-8 bytes |
+| `SEED_ADMIN_PASSWORD` | Explicit password of at least 12 characters for `admin@claims.local` |
 
 (No SQL password and no registry secret are needed.)
 
@@ -61,7 +67,7 @@ Copy the **entire JSON** output — that's the `AZURE_CREDENTIALS` secret.
 
 ### 4. Run the deploy once, then make the image public
 
-1. Merge to `main` (or **Actions → Deploy to Azure (free) → Run workflow**).
+1. Merge to `main` (or **Actions → Deploy to Azure (demo) → Run workflow**).
    The first run pushes the image to GHCR and provisions Container Apps.
 2. The GHCR package is **private by default**, so the very first deploy may show
    the app failing to pull the image. Make it public **once**:
@@ -88,9 +94,8 @@ Open `https://<app>.<region>.azurecontainerapps.io/swagger` to explore the API.
 
 ## Cost & teardown
 
-With scale-to-zero + SQLite + GHCR, steady-state cost is **$0**. The only
-residual risk is exceeding the monthly Container Apps free grant under sustained
-traffic. To remove everything:
+Scale-to-zero and SQLite reduce demo costs but do not guarantee a zero bill.
+Monitor subscription charges and budgets. To remove the demo resources:
 
 ```bash
 az group delete --name claims-rg --yes --no-wait

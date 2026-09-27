@@ -405,6 +405,10 @@ FodyWeavers.xsd
 !.vscode/*.code-snippets
 
 # Local History for Visual Studio Code
+.local/
+*.db
+*.db-shm
+*.db-wal
 .history/
 
 # Built Visual Studio Code Extensions
